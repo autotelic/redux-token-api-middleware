@@ -11,9 +11,57 @@ import jwt_decode from 'jwt-decode';
 import moment from 'moment';
 import fetch from 'cross-fetch';
 
+/**
+ * @typedef {Object} ConfigOptions
+ * The options passed to the [TokenApiService]{@link TokenApiService} through the config param.
+ * @property {Object} [defaultHeaders={'Content-Type': 'application/json'}] -
+ * The headers to be applied to every API request.
+ * @property {Function} [retrieveRefreshToken=() => {}] -
+ * To be implemented by the user for refreshing tokens.
+ * @property {string} [tokenStorageKey=[TOKEN_STORAGE_KEY]{@link TOKEN_STORAGE_KEY}] -
+ * The key the token will be stored under.
+ * @property {Function} [checkTokenFreshness=[checkTokenFreshness]{@link checkTokenFreshness}]
+ * @property {Function} [retrieveRefreshToken=() => {}]
+ * @property {Function} [retrieveToken=[retrieveToken]{@link retrieveToken}]
+ * @property {Function} [storeToken=[storeToken]{@link storeToken}]
+ * @property {Function} [refreshAction=() => {}]
+ * @property {Function} [shouldRequestNewToken=[shouldRequestNewToken]{@link shouldRequestNewToken}]
+ * @property {Function} [addTokenToRequest=[defaultAddTokenToRequest]{@link TokenApiService#defaultAddTokenToRequest}]
+ * @property {Function} [catchApiRequestError=[defaultCatchApiRequestError]{@link TokenApiService#defaultCatchApiRequestError}]
+ * @property {Function} [checkResponseIsOk=[checkResponseIsOk]{@link checkResponseIsOk}]
+ * @property {number} [minTokenLifespan=[MIN_TOKEN_LIFESPAN]{@link MIN_TOKEN_LIFESPAN}]
+ * @property {string} [actionKey=[CALL_TOKEN_API]{@link CALL_TOKEN_API}]
+ * @property {Function} [preProcessRequest] -
+ * Optional handler to be called in [getApiFetchArgsFromActionPayload]{@link TokenApiService#getApiFetchArgsFromActionPayload}
+ */
+
+/**
+ * The default actionKey
+ * @constant
+ * @example
+ * // This can be imported.
+ * import { CALL_TOKEN_API } from 'redux-token-api-middleware';
+ * @type {string}
+ * @default '@@CALL_TOKEN_API'
+ */
 export const CALL_TOKEN_API = '@@CALL_TOKEN_API';
+
+/**
+ * The default tokenStorageKey
+ * @constant
+ * @example
+ * // This can be imported.
+ * import { TOKEN_STORAGE_KEY } from 'redux-token-api-middleware';
+ * @type {string}
+ * @default 'reduxMiddlewareAuthToken'
+ */
 export const TOKEN_STORAGE_KEY = 'reduxMiddlewareAuthToken';
 
+/**
+ * @constant
+ * @type {number}
+ * @default
+ */
 const MIN_TOKEN_LIFESPAN = 300;
 
 const NotImplemented = function(message) {
@@ -24,6 +72,9 @@ const NotImplemented = function(message) {
 NotImplemented.prototype = Object.create(Error.prototype);
 NotImplemented.prototype.constructor = NotImplemented;
 
+/**
+ * @param {Object} response - API Response
+ */
 function checkResponseIsOk(response) {
   return response.ok ? response : response.text().then(text => {
     return Promise.reject(text);
@@ -72,12 +123,19 @@ function createFailureAction(type, error, meta) {
   return createAsyncAction(type, 'FAILED', new TypeError(error), meta);
 }
 
+/**
+ * @param {string} key
+ * @param {Object} response - API Response
+ */
 export function storeToken(key, response) {
   let token = response.token;
   localStorage.setItem(key, JSON.stringify(token));
   return token;
 }
 
+/**
+ * @param {string} key
+ */
 export function retrieveToken(key) {
   let storedValue = localStorage.getItem(key);
   if (!storedValue) {
@@ -94,16 +152,26 @@ export function retrieveToken(key) {
   }
 }
 
+/**
+ * @param {string} key
+ */
 export function removeToken(key) {
   localStorage.removeItem(key);
 }
 
+/**
+ * @param {string} token - api token
+ * @return {boolean}
+ */
 export function checkTokenFreshness(token) {
   let tokenPayload = jwt_decode(token);
   let expiry = moment.unix(tokenPayload.exp);
   return expiry.diff(moment(), 'seconds') > MIN_TOKEN_LIFESPAN;
 }
 
+/**
+ * @return {boolean}
+ */
 export function shouldRequestNewToken() {
   if (!this.refreshToken) {
     return false;
@@ -114,6 +182,9 @@ export function shouldRequestNewToken() {
     : false;
 }
 
+/**
+ * @param {Object} meta - Action.meta.
+ */
 export function createResponseHandlerWithMeta(meta) {
   const baseHandler = meta.responseHandler || identity;
   const handlerToCurry = (response, meta) => (
@@ -122,8 +193,14 @@ export function createResponseHandlerWithMeta(meta) {
   return curryRight(handlerToCurry)(meta);
 }
 
+/** Class representing the Token API Service */
 export class TokenApiService {
-
+  /**
+   * Create the service.
+   * @param {Object} apiAction - action the service will dispatch.
+   * @param {Function} dispatch - store.dispatch.
+   * @param {ConfigOptions} [config={}] - configuration options.
+   */
   constructor(apiAction, dispatch, config={}) {
     this.apiAction = apiAction;
     this.meta = this.apiAction.meta || {};
@@ -152,10 +229,21 @@ export class TokenApiService {
     this.retrieveToken = this.retrieveToken.bind(this, this.tokenStorageKey);
   }
 
+  /**
+   * Get a value from the config if provided, otherwise use default.
+   * @param {string} key - The key of the desired config value.
+   * @return {Function} The value of the provided config key.
+   */
   configOrDefault(key) {
     return this.config[key] || this.defaultMethods[key];
   }
 
+  /**
+   * Get a required value from the config.
+   * @param {string} key - The key of the desired config value.
+   * @return {Function} The value of the provided config key.
+   * @throws Will throw an error if value does not exist in config.
+   */
   configOrNotImplemented(key) {
     const method = this.config[key];
     if (!method) {
@@ -164,6 +252,9 @@ export class TokenApiService {
     return method;
   }
 
+  /**
+   * Gets default methods.
+   */
   get defaultMethods() {
     return {
       checkTokenFreshness,
@@ -175,9 +266,15 @@ export class TokenApiService {
       addTokenToRequest: this.defaultAddTokenToRequest,
       catchApiRequestError: this.defaultCatchApiRequestError,
       checkResponseIsOk: checkResponseIsOk
-    }
   }
+}
 
+  /**
+   * Dispatches the COMPLETED action and returns the API response.
+   * @param {string} type - The action type.
+   * @param {Object} finalResponse - The successful API response.
+   * @return {Object} The successful API response. 
+   */
   completeApiRequest(type, finalResponse) {
     this.dispatch(createCompletionAction(
       type, finalResponse, this.meta,
@@ -185,16 +282,34 @@ export class TokenApiService {
     return finalResponse;
   }
 
+  /**
+   * Default error handler.
+   * @param {string} type - The action type.
+   * @param {*} error - The API response or error.
+   * @return {*} The API response or error.
+   */
   defaultCatchApiRequestError(type, error) {
     return error;
   }
 
+  /**
+   * Dispatches the FAILED action and returns the API response/error.
+   * @param {string} type - The action type.
+   * @param {*} error - The API response or error.
+   * @return {*} return value of the provided error handler.
+   */
   catchApiRequestError(type, error) {
     const fn = this.configOrDefault('catchApiRequestError');
     this.dispatch(createFailureAction(type, error, this.meta));
     return fn(type, error);
   }
 
+  /**
+   * Preserves the requested headers in the meta object.
+   * @param {Object} meta - The action's meta.
+   * @param {*} response - The API response.
+   * @return {*} The API response.
+   */
   preserveHeaderValues(meta, response) {
     const headersToPreserve = meta.preserveHeaders;
     if (Array.isArray(headersToPreserve)) {
@@ -208,6 +323,12 @@ export class TokenApiService {
     return response;
   }
 
+  /**
+   * Makes the API request.
+   * @param {Object} fetchArgs - The fetch args provided in the acton.payload.
+   * @param {Object} action - the dispatched API action.
+   * @return {Object} The COMPLETED or FAILED action.
+   */
   apiRequest(fetchArgs, action) {
     const meta = action.meta || {};
     const completeApiRequest = this.completeApiRequest.bind(this, action.type);
@@ -222,6 +343,11 @@ export class TokenApiService {
       .catch(catchApiRequestError);
   }
 
+  /**
+   * Creates a callback that makes the API request.
+   * @param {Object} fetchArgs - The fetch args provided in the acton.payload.
+   * @return {Function} a callback that makes the API request.
+   */
   apiRequestPromise(fetchArgs) {
     return () => {
       return fetch.apply(null, fetchArgs)
@@ -230,6 +356,11 @@ export class TokenApiService {
     };
   }
 
+  /**
+   * Dispatches the START action and calls [apiRequest]{@link TokenApiService#apiRequest}.
+   * @param {Object} action - The dispatched API action.
+   * @param {string} [token=null] - The API auth token.
+   */
   apiCallFromAction(action, token=null) {
     const authenticate = get(this.meta, 'authenticate', true);
     const apiFetchArgs = this.getApiFetchArgsFromActionPayload(
@@ -239,6 +370,12 @@ export class TokenApiService {
     return this.apiRequest(apiFetchArgs, action, this.store);
   }
 
+  /**
+   * Dispatches the START action and makes multiple API calls with
+   * [apiRequestPromise]{@link TokenApiService#apiRequestPromise}.
+   * @param {Object} action - The dispatched API action.
+   * @param {string} [token=null] - The API auth token.
+   */
   multipleApiCallsFromAction(action, token=null) {
     const meta = action.meta || {};
     let promises = map(action.payload, (apiAction) => {
@@ -256,16 +393,26 @@ export class TokenApiService {
       .catch(catchApiRequestError);
   }
 
+  /**
+   * Returns [multipleApiCallsFromAction]{@link TokenApiService#multipleApiCallsFromAction} if
+   * action.payload is an array, otherwise [apiCallFromAction]{@link TokenApiService#apiCallFromAction}.
+   */
   get apiCallMethod() {
     return isArrayLikeObject(this.apiAction.payload)
       ? this.multipleApiCallsFromAction
       : this.apiCallFromAction;
   }
-
+  
+  /**
+   * Gets the [apiCallMethod]{@link TokenApiService#apiCallMethod} and binds it to the apiAction.
+   */
   get curriedApiCallMethod() {
     return this.apiCallMethod.bind(this, this.apiAction);
   }
 
+  /**
+   * Gets the token.
+   */
   async getToken() {
     const token = this.retrieveToken()
     if (token instanceof Promise) {
@@ -274,6 +421,9 @@ export class TokenApiService {
     return token;
   }
 
+  /**
+   * Gets the refresh token.
+   */
   async getRefreshToken() {
     const token = this.retrieveRefreshToken()
     if (token instanceof Promise) {
@@ -282,6 +432,13 @@ export class TokenApiService {
     return token;
   }
 
+  /**
+   * Default token handler - adds token to API request.
+   * @param {Object} headers - The request headers.
+   * @param {string} endpoint - The API endpoint.
+   * @param {Object} body - The request body,
+   * @param {string} token - The API auth token.
+   */
   defaultAddTokenToRequest(headers, endpoint, body, token) {
     return {
       headers: Object.assign({
@@ -292,6 +449,12 @@ export class TokenApiService {
     }
   }
 
+  /**
+   * Gets the fetchArgs from the provided action.payload.
+   * @param {Object} payload - The payload of an API action.
+   * @param {string} [token=null] - The API auth token.
+   * @param {boolean} [authenticate=true] - Authentication required?
+   */
   getApiFetchArgsFromActionPayload(payload, token=null, authenticate=true) {
     let { headers, endpoint, method, body, credentials } = payload;
     if (isUndefined(method)) {
@@ -319,7 +482,9 @@ export class TokenApiService {
       endpoint, omitBy({method, body, credentials, headers}, isUndefined)
     ];
   }
-
+  /**
+   * Refreshes the token, if neccessary, and makes the API call using the provided action.
+   */
   async call() {
     const token = await this.getToken();
     if (await this.shouldRequestNewToken()) {
