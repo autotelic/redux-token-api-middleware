@@ -27,7 +27,7 @@
   "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.2.0",
-    "cross-fetch": "^2.2.2",
+    "cross-fetch": "^3.0.4",
     "jwt-decode": "^2.2.0",
     "lodash.curryright": "^4.1.1",
     "lodash.get": "^4.4.2",
