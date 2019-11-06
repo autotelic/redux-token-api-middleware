@@ -8,7 +8,7 @@ endpoints.
 
 ## Installation
 
-	$ npm install redux-token-api-middleware
+	$ npm install @autotelic/redux-token-api-middleware
 
 ## Usage
 
