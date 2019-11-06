@@ -1,6 +1,6 @@
 {
-  "name": "redux-token-api-middleware",
-  "version": "0.12.0",
+  "name": "@autotelic/redux-token-api-middleware",
+  "version": "0.13.0",
   "description": "Redux middleware for calling APIs with token-based auth",
   "main": "lib/index.js",
   "scripts": {
@@ -19,11 +19,11 @@
     "jwt"
   ],
   "author": "Edward Stone <ed@autotelic.com>",
-  "repository": "https://github.com/eadmundo/redux-token-api-middleware",
+  "repository": "https://github.com/autotelic/redux-token-api-middleware",
   "bugs": {
-    "url": "https://github.com/eadmundo/redux-token-api-middleware/issues"
+    "url": "https://github.com/autotelic/redux-token-api-middleware/issues"
   },
-  "homepage": "https://github.com/eadmundo/redux-token-api-middleware",
+  "homepage": "https://github.com/autotelic/redux-token-api-middleware",
   "license": "MIT",
   "dependencies": {
     "@babel/runtime": "^7.2.0",
