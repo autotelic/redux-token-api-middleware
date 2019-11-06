@@ -194,20 +194,21 @@ export class TokenApiService {
   }
 
   completeApiRequest(type, finalResponse) {
-    this.dispatch(createCompletionAction(
+    const action = createCompletionAction(
       type, finalResponse, this.meta,
-    ));
-    return finalResponse;
+    )
+    this.dispatch(action);
+    return action;
   }
 
-  defaultCatchApiRequestError(type, error) {
-    return error;
+  defaultCatchApiRequestError(type, error, meta) {
+    return { error, meta };
   }
 
   catchApiRequestError(type, error) {
     const fn = this.configOrDefault('catchApiRequestError');
     this.dispatch(createFailureAction(type, error, this.meta));
-    return fn(type, error);
+    return fn(type, error, this.meta);
   }
 
   preserveHeaderValues(meta, response) {
