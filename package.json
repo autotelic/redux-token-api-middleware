@@ -55,7 +55,7 @@
     "react": "^16.6.3",
     "react-hot-loader": "^4.3.12",
     "rimraf": "^3.0.0",
-    "sinon": "^9.0.1",
+    "sinon": "^11.1.2",
     "watch": "^1.0.2"
   },
   "npmName": "redux-api-token-middleware",
