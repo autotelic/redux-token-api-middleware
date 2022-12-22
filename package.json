@@ -50,7 +50,7 @@
     "@babel/preset-env": "^7.2.0",
     "@babel/register": "^7.0.0",
     "chai": "^4.2.0",
-    "jsonwebtoken": "^8.4.0",
+    "jsonwebtoken": "^9.0.0",
     "mocha": "^7.0.0",
     "react": "^16.6.3",
     "react-hot-loader": "^4.3.12",
